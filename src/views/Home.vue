@@ -8,14 +8,25 @@
             type="text"
             name="todoName"
             id="todoName"
+            ref="inputRef"
             v-model="state.title"
             class="p-4 m-2 outline-none focus:border-red-400 shadow-md transition-all border-2 flex-1 block w-full rounded sm:text-sm"
             placeholder="Todo Title"
             autocomplete="off"
+            autofocus
           />
           <span>{{ state.title }}</span>
 
           <button
+            v-if="state.update"
+            @click="updateTodo"
+            type="button"
+            class="p-4 rounded-lg focus:border-pink-700 border transition-all text-white focus:outline-none bg-accent-light"
+          >
+            update
+          </button>
+          <button
+            v-else
             type="submit"
             class="p-4 rounded-lg focus:border-pink-700 border transition-all text-white focus:outline-none bg-accent-light"
           >
@@ -38,12 +49,21 @@
             >
               {{ item.title }}
             </li>
-            <button
-              @click="deleteTodo(item._id)"
-              class="transition-all shadow-lg bg-gradient-to-br from-gray-300 to-accent-code outline-none focus:accent-dark bg-primary-light text-white p-2"
-            >
-              remove
-            </button>
+
+            <div class="flex flex-row justify-between">
+              <button
+                @click="toggleUpdate(item._id)"
+                class="mr-2 transition-all shadow-lg bg-gradient-to-br from-gray-300 to-primary-red-400 outline-none focus:accent-dark bg-primary-light text-white p-2"
+              >
+                update
+              </button>
+              <button
+                @click="deleteTodo(item._id)"
+                class="transition-all shadow-lg bg-gradient-to-br from-gray-300 to-accent-code outline-none focus:accent-dark bg-primary-light text-white p-2"
+              >
+                remove
+              </button>
+            </div>
           </div>
         </ul>
       </div>
@@ -52,7 +72,7 @@
 </template>
 
 <script >
-import { defineComponent, onBeforeMount, reactive } from "vue";
+import { defineComponent, onBeforeMount, reactive, ref } from "vue";
 
 import axios from "axios";
 
@@ -65,8 +85,11 @@ export default defineComponent({
       loading: false,
       title: "",
       cacheData: [],
+      update: false,
+      selectedId: "",
     });
-    const api = "https://fastify-vue3-frncmlqaf-buddhanag12.vercel.app/";
+    const api = "https://fastify-server.vercel.app/";
+    const inputRef = ref();
 
     function getData() {
       state.loading = true;
@@ -77,7 +100,7 @@ export default defineComponent({
     }
     function addTodo() {
       if (!state.title) {
-        alert('Add some todo first');
+        alert("Add some todo first");
         return;
       } else
         axios
@@ -92,7 +115,7 @@ export default defineComponent({
     }
     function toggleTodo(id, title, done) {
       axios
-        .post(`${api}update/` + id, {
+        .put(`${api}update/` + id, {
           title: title,
           done: (done = !done),
         })
@@ -100,21 +123,45 @@ export default defineComponent({
           getData();
         });
     }
+    function updateTodo() {
+      axios
+        .put(`${api}update/` + state.selectedId, {
+          title: state.title,
+          done: state.done,
+        })
+        .then(() => {
+          getData();
+          state.update = false;
+          state.selectedId = "";
+          state.title = "";
+          inputRef.value.placeholder = "Todo Title";
+        });
+    }
     function deleteTodo(id) {
       state.loading = true;
-      axios.post(`${api}delete/` + id).then(() => {
+      axios.delete(`${api}delete/` + id).then(() => {
         state.loading = false;
         getData();
       });
     }
+    function toggleUpdate(id) {
+      state.update = !state.update;
+      state.selectedId = id;
+      inputRef.value.focus();
+      inputRef.value.placeholder = "Update Todo";
+    }
     onBeforeMount(() => {
       getData();
     });
+
     return {
       state,
       addTodo,
       toggleTodo,
       deleteTodo,
+      updateTodo,
+      toggleUpdate,
+      inputRef,
     };
   },
 });
